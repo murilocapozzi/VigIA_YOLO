@@ -12,7 +12,7 @@ with open("coconames", "r") as f:
 cap = cv2.VideoCapture("video-test2.mp4")
 
 
-#net = cv2.dnn.readNet("yolov4.weights", "yolov4.cfg")
+#net = cv2.dnn.readNet("yolov4-tiny.weights", "yolov4-tiny.cfg")
 net = cv2.dnn.readNet("yolov7-tiny.weights", "yolov7-tiny.cfg")
 
 
