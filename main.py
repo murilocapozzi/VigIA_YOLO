@@ -14,8 +14,10 @@ def convert(seconds):
 
 def identify(video):
 
+    # Cores utilizadas nos quadrados das detecções
     COLORS = [(0, 255, 255), (255, 255, 0), (0, 255, 0), (255, 0, 0)]
 
+    # Listas que irão guardar as classes possíveis e outra que guardará apenas classes que desejamos trabalhar
     class_names = []
     with open("coconames", "r") as f:
         class_names = [cname.strip() for cname in f.readlines()]
@@ -26,6 +28,8 @@ def identify(video):
 
     cap = cv2.VideoCapture(video)
 
+    # Redes pré-treinadas YOLO
+
     #net = cv2.dnn.readNet("yolov4-tiny.weights", "yolov4-tiny.cfg")
     net = cv2.dnn.readNet("yolov7-tiny.weights", "yolov7-tiny.cfg")
 
@@ -35,22 +39,26 @@ def identify(video):
 
     tempo = 0
 
+    # Enquanto há frames do vídeo para processar
     while True:
         
         _, frame = cap.read()
 
-        # fps
+        # Demarca FPS
         start = time.time()
 
+        # Detecção
         classes, scores, boxes = model.detect(frame, 0.1, 0.2)
 
         tempo += time.time() - start
         end = time.time()
 
-        # percorrer as detecções feitas
+        # Percorrer as detecções e imprimí-las na tela junto do frame correspondente
         for (classid, score, box) in zip(classes, scores, boxes):
             
+            # Analisa se é uma classe desejada
             if class_names[classid] in util_class_names:
+
                 color = COLORS[int(classid) % len(COLORS)]
 
                 print(f"Tag: {class_names[classid]} \tPrecisao: {score:.2f} \tTempo: {convert(tempo)}")
@@ -66,18 +74,21 @@ def identify(video):
         cv2.putText(frame, fps_label, (0, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 5)
         cv2.putText(frame, fps_label, (0, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3)
 
-        cv2.imshow("detections", frame)
+        cv2.imshow("VigIA", frame)
 
-        # espera da resposta
+        # Espera de resposta para finalizar janela
         if cv2.waitKey(1) == 27:
             break
 
-    # libera e destroi janelas
+    # Libera e destrói janelas
     cap.release()
     cv2.destroyAllWindows()
+
+
+
 
 if __name__ == '__main__':
 
     video = "video-test2.mp4"
-    
+
     identify(video)
