@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 
+
 def convert(seconds):
     seconds = seconds % (24 * 3600)
     hour = seconds // 3600
@@ -14,6 +15,8 @@ def convert(seconds):
 
 def identify(video):
 
+    eventos = []
+
     # Cores utilizadas nos quadrados das detecções
     COLORS = [(0, 255, 255), (255, 255, 0), (0, 255, 0), (255, 0, 0)]
 
@@ -21,15 +24,11 @@ def identify(video):
     class_names = []
     with open("coconames", "r") as f:
         class_names = [cname.strip() for cname in f.readlines()]
-
     util_class_names = []
     with open("utilnames", "r") as f:
         util_class_names = [cname.strip() for cname in f.readlines()]
 
-    cap = cv2.VideoCapture(video)
-
     # Redes pré-treinadas YOLO
-
     #net = cv2.dnn.readNet("yolov4-tiny.weights", "yolov4-tiny.cfg")
     net = cv2.dnn.readNet("yolov7-tiny.weights", "yolov7-tiny.cfg")
 
@@ -39,10 +38,21 @@ def identify(video):
 
     tempo = 0
 
+    cap = cv2.VideoCapture(video)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    print('frames per second =',fps)
+
+    minutes = 1
+    seconds = 0
+    frame_id = int(fps*(0*60 + 3))
+    print('frame id =',frame_id)
+
     # Enquanto há frames do vídeo para processar
-    while True:
-        
-        _, frame = cap.read()
+    i = 0
+
+    ret, frame = cap.read()
+    while ret:
+        #print(i, int(fps*(1*60 + 0)))
 
         # Demarca FPS
         start = time.time()
@@ -53,21 +63,31 @@ def identify(video):
         tempo += time.time() - start
         end = time.time()
 
+
         # Percorrer as detecções e imprimí-las na tela junto do frame correspondente
         for (classid, score, box) in zip(classes, scores, boxes):
             
             # Analisa se é uma classe desejada
-            if class_names[classid] in util_class_names:
+            if class_names[classid] in util_class_names and score >= 0.5:
+
+                
+                if(not eventos or eventos[-1][0] < convert(tempo)):
+                    eventos.append([convert(tempo)])
+
+                for evento in eventos:
+                    tempo_evento = evento[0]
+                    if tempo_evento == convert(tempo) and class_names[classid] not in evento:
+                        evento.append(class_names[classid])
 
                 color = COLORS[int(classid) % len(COLORS)]
 
-                print(f"Tag: {class_names[classid]} \tPrecisao: {score:.2f} \tTempo: {convert(tempo)}")
-                label = f"{class_names[classid]} : {score}"
+                #print(f"Tag: {class_names[classid]} \tPrecisao: {score:.2f} \tTempo: {convert(tempo)}")
+
+                label = f"{class_names[classid]} : {100 * score:.2f}%"
 
                 cv2.rectangle(frame, box, color, 2)
 
                 cv2.putText(frame, label, (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
 
         fps_label = f"FPS: {round((1.0/(end - start)), 2)}"
 
@@ -80,15 +100,44 @@ def identify(video):
         if cv2.waitKey(1) == 27:
             break
 
+        i += 1
+
+        # Escreve o que pegou naquele minuto
+        if(i % int(fps*(1*60 + 0)) == 0):
+            f = open("events.txt", "a")
+            for item in eventos:
+                string = ''
+                for element in item:
+                    string = string + str(element) + ';'
+                string = string + '\n'
+                f.write(string)
+            f.close()
+            eventos = []
+
+        ret, frame = cap.read()
+
     # Libera e destrói janelas
     cap.release()
     cv2.destroyAllWindows()
+    
+    return eventos
+
 
 
 
 
 if __name__ == '__main__':
 
-    video = "video-test2.mp4"
+    video = "video-test3.mp4"
 
-    identify(video)
+    eventos = identify(video)
+
+    # Escreve o que sobrou
+    f = open("events.txt", "a")
+    for item in eventos:
+        string = ''
+        for element in item:
+            string = string + str(element) + ';'
+        string = string + '\n'
+        f.write(string)
+    f.close()
