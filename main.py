@@ -11,10 +11,17 @@ class Event:
     def add_event(self, event):
         self.events.append(event)
 
+
+def writeToFile(events, filename):
+
+    with open(filename, "a") as file:
+        for item in events:
+            json.dump(item.__dict__, file, indent=2)
+
+
 def identifyEvents(video):
 
     eventos = []
-    tempo = 0
     i = 0
 
     # Listas que irão guardar as classes possíveis e outra que guardará apenas classes que desejamos trabalhar
@@ -48,7 +55,7 @@ def identifyEvents(video):
         # Detecção dos eventos
         classes, scores, boxes = model.detect(frame, 0.1, 0.2)
 
-        # Percorrer as detecções e imprimí-las na tela junto do frame correspondente
+        # Percorrer as detecções
         for (classid, score, box) in zip(classes, scores, boxes):
             
             # Analisa se é uma classe desejada e possui precisao maior ou igual a 60%
@@ -58,52 +65,34 @@ def identifyEvents(video):
                 if not eventos or eventos[-1].frame < i and i % int(fps) == 0:
                     eventos.append(Event(i))
 
-                # Percorre
+                # Percorre a lista de eventos para adicionar (caso ainda nao exista)
+                # a classe nova no frame certo
                 for evento in eventos:
                     
                     frame_evento = evento.frame
+                    
                     if frame_evento == i and class_names[classid] not in evento.events:
                         evento.add_event(class_names[classid])
 
         # Escreve o que pegou naquele minuto (frames que ocorreram nos 60 segundos)
         if(i % int(fps*(1*60 + 0)) == 0 and i != 0):
-            f = open("events.txt", "a")
-
-            for item in eventos:
-
-                jsonStr = json.dumps(item.__dict__)
-                f.write(jsonStr)
-                f.write('\n')
-
-            f.close()
+            
+            writeToFile(eventos, "events.json")
+            
             eventos = []
 
         has_video, frame = cap.read()
         i += 1
-
-    # Libera e destrói janelas
-    cap.release()
-    cv2.destroyAllWindows()
     
     return eventos
-
-
-
-
 
 if __name__ == '__main__':
 
     video = "video-test.mp4"
 
-    list_events = identifyEvents(video)
+    eventos = identifyEvents(video)
 
     # Escreve o que sobrou
-    f = open("events.txt", "a")
+    if(eventos):
 
-    for item in list_events:
-
-        jsonStr = json.dumps(item.__dict__)
-        f.write(jsonStr)
-        f.write('\n')
-
-    f.close()
+        writeToFile(eventos, "events.json")
